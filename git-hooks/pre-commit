@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+source etkilesim
+
+precommitBaslik="$urtotm_dialogBaslik - pre-commit"
+
+# Testleri çalıştırmadan önce gradlew varlığını yokla
+if [[ command -v flutter &>/dev/null ]]; then
+	mesajGoster hata "$precommitBaslik" \
+		"'flutter' komut satırı aracı yüklü olmadığından pre-commit kancası iptal oldu."
+	exit 1
+fi
+
+# İşlenen dosyalarda projeye ait çalıştırılabilir kodlar içeren kaynak dosyası varsa
+# birim testlerini tetikle
+# diff-filter: A (Added), C (Copied), M (Modified)
+while read -r dsy; do
+	# Test dosyalarını atla
+	if [[ "$dsy" == *"_test"* ]]; then
+		continue
+	fi
+	modul="$(basename -- "$dsy")" # Yolları at
+	modul="${modul%.*}" # uzantıyı da at
+	moduller+=("$modul")
+done < <(git diff --cached --name-only --diff-filter=ACM | grep -e'.*\.dart' | grep -v '.*Test\.dart')
+
+# Bu kancada yalnızca birim (unit) testlerini çalıştır
+if [[ "${#moduller[@]}" -ge 1 ]]; then
+	birimTestiDizini="${urtotm_projeDizini}/test"
+	for modul in "${moduller[@]}"; do
+		# Bu modül için birim testi varlığını yokla
+		# ATTENTION! modul uzantıyı barındırmadığı için find ile ararken sonuna bir (*) eklenmezse
+		# find hiç sonuç vermez. Şimdilik modül başına yalnızca bir test desteklenir.
+		# Bu ileride değişebilir.
+		birimTestDosyasi="$(find "$birimTestiDizini" -name "$modul*" -type f | head -1)"
+		if [[ -z "$birimTestDosyasi" ]]; then
+			# Bu modül için test bulunamadı, sonrakine bak
+			echo "'$modul' modülü için birim veya entegrasyon testi bulunamadığından atlanıyor."
+			continue
+		fi
+
+		flutter test "$birimTestDosyasi"
+		testSonucu=$?
+		if [[ "$testSonucu" != "0" ]]; then
+			# Herhangi bir testin sonucu başarısız olursa iptal et
+			exit "$testSonucu"
+		fi
+	done
+fi

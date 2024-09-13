@@ -1,0 +1,4 @@
+# Sondaki '/' karakteri rsync nin yalnızca bu addaki dizinleri
+# filtrelemesini sağlar
+
+build
