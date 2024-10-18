@@ -4,7 +4,7 @@ source etkilesim
 precommitBaslik="$urtotm_dialogBaslik - pre-commit"
 
 # Testleri çalıştırmadan önce gradlew varlığını yokla
-if [[ command -v flutter &>/dev/null ]]; then
+if ! command -v flutter &>/dev/null; then
 	mesajGoster hata "$precommitBaslik" \
 		"'flutter' komut satırı aracı yüklü olmadığından pre-commit kancası iptal oldu."
 	exit 1
